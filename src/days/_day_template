@@ -1,0 +1,11 @@
+import { Day } from "./day";
+
+export class DayX extends Day {
+    part1(): number {
+        return 0;
+    }
+
+    part2(): number {
+        return 0;
+    }
+}
