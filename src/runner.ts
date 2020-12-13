@@ -21,15 +21,18 @@ export class Runner {
             const cls = module[`Day${this.day}`];
             const instance: Day = new cls(data);
             
-            console.time('Part1');
+            console.log('===== Part 1 =====');
+            console.time('Time');
             const result1 = instance.part1();
-            console.timeEnd('Part1');
-            console.log(result1);
-
-            console.time('Part2');
+            console.timeEnd('Time');
+            console.log('Result:', result1);
+            console.log('');
+            
+            console.log('===== Part 2 =====');
+            console.time('Time');
             const result2 = instance.part2();
-            console.timeEnd('Part2');
-            console.log(result2);
+            console.timeEnd('Time');
+            console.log('Result:', result2);
         }, () => {
             console.error(`day ${this.day} not implemented!`);
         });

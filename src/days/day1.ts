@@ -25,7 +25,6 @@ export class Day1 extends Day {
         let currentDirection = 0;
 
         for (const direction of directions) {
-            console.log(direction);
             currentDirection = this.getDirection(currentDirection, direction[0] === 'R');
             const value = parseInt(direction.split('').slice(1).join(''));
 
