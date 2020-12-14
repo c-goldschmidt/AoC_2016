@@ -12,7 +12,7 @@ export class Runner {
                 console.error(err);
                 return;
             }
-            this.run(data.toString().split('\n'));
+            this.run(data.toString().split(/\r?\n/));
         });
     }
 
