@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "tsc": "tsc",
-    "start": "tsc && node build/index.js"
+    "start": "tsc && node --max_old_space_size=8192 build/index.js"
   },
   "repository": {
     "type": "git",

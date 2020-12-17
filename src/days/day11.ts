@@ -1,154 +1,111 @@
 import { Day } from "./day";
-import { permutatons } from "../utils";
+
+const elements: string[] = [];
 
 export class Chip {
-    constructor(public element: string) {}
+    public value: number;
+    constructor(public element: string) {
+        if (!elements.includes(element)) {
+            elements.push(element);
+        }
+        this.value = elements.indexOf(element);
+    }
 }
 export class Generator {
-    constructor(public element: string) {}
+    public value: number;
+    constructor(public element: string) {
+        if (!elements.includes(element)) {
+            elements.push(element);
+        }
+        this.value = -elements.indexOf(element);
+    }
 }
 type Item = Generator | Chip;
 
-class Node {
-    private static index = 0;
-    public id: number;
-
-    constructor(public floorDiagram: Item[][], private totalItems: number) {
-        this.id = Node.index++;
-    }
-
-    private get itemCount(): number {
-        return this.floorDiagram.reduce((prev, floor) => prev + floor.length, 0);
-    }
-
-    public get isEnd() {
-        return this.floorDiagram[this.floorDiagram.length - 1].length === this.totalItems;
-    }
-
-    public get valid() {
-        if (this.itemCount !== this.totalItems) {
-            return false;
-        }
-
-        let valid = true;
-        this.floorDiagram.reduce((acc, curr) => {
-            if (!valid || !Node.floorValid(curr)) {
-                valid = false;
-                return acc;
-            }
-            for (const item of curr) {
-                if (acc.includes(item)) {
-                    valid = false;
-                }
-            }
-            return acc.concat(curr);
-        }, []);
-
-        return valid;
-    }
-
-    public static floorValid(items: Item[]) {
-        const chips = items.filter(item => item instanceof Chip);
-        const gens = items.filter(item => item instanceof Generator);
-        
-        for (let i = 0; i<chips.length; i++) {
-            const chip = chips[i];
-            const gen = gens.find(item => item.element === chip.element);
-            if (gens.length > 0 && !gen) {
-                // chip is fried
-                return false;
-            }
-        }
-        return true;
-    }
-
-    public equals(b: Item[][]): boolean {
-        return this.floorDiagram.every((itemX, x) => itemX.every((itemY, y) => b[x][y] === itemY));
-    }
-
-    public canMoveTo(other: Node, currentFloor: number): [boolean, number] {
-        const movable = permutatons(this.floorDiagram[currentFloor], 2, true);
-        for (const move of movable) {
-            if (!move.length) {
-                continue;
-            }
-
-
-        }
-
-        return [false, currentFloor];
-    }
-}
-
-
 export class Day11 extends Day {
     part1(): number {
+        // return 0;
         const diagram = this.generateDiagram();
-        const validStates = this.getValidStates(diagram);
-
-        const start = validStates.find(state => state.equals(diagram));
-        const end = validStates.find(state => state.isEnd);
-
-        return this.findMinPath(start!, end!, validStates);
+        return  this.findMinPath(diagram);
     }
 
     part2(): number {
-        return 0;
+        const diagram = this.generateDiagram();
+        diagram[0].push(new Generator('elerium'));
+        diagram[0].push(new Generator('dilithium'));
+        diagram[0].push(new Chip('elerium'));
+        diagram[0].push(new Chip('dilithium'));
+        return this.findMinPath(diagram);
     }
 
-    private findMinPath(start: Node, end: Node, nodes: Node[], currentFloor = 0) {
-        let minPath = Infinity;
-        const otherNodes = nodes.filter(node => node.id != start.id);
-        for (const other of otherNodes) {
-            const [canMove, newFloor] = start.canMoveTo(other, currentFloor)
-            if (!canMove) {
+    private findMinPath(start: Item[][]): number {
+        const states: string[] = [];
+        let queue: [number, number[][], number, string][] = [];
+
+        const getHash = (elevator: number, floors: number[][]): string => {
+            const floorData = floors.map(floor => [floor.length, floor.reduce((acc, curr) => acc + Number(curr < 0), 0)].join('/'));
+            return `${elevator}[${floorData.join(',')}]`
+        }
+
+        const move = (elevator: number, floors: number[][], direction: number, fromIndex: number | null, toIndex: number | null) => {
+            if (fromIndex !== null && toIndex !== null) {
+                floors[elevator + direction].splice(toIndex, 0, floors[elevator][fromIndex]);
+                floors[elevator].splice(fromIndex, 1);
+            }
+
+        }
+
+        const isValidState = (floor: number[]): boolean => {
+            const hasGen = floor.some(i => i < 0);
+            const unpaired = floor.some(i => i > 0 && !floor.some(j => j === -i));
+            return !(hasGen && unpaired);
+
+        }
+
+        const exploreState = (req: number, elevator: number, floors: number[][], direction: number, moves: number, index1: number, index2: number | null = null) => {
+            if(direction * elevator < req) {
+                move(elevator, floors, direction, index2, 0);
+                move(elevator, floors, direction, index1, 0);
+                const nextHash = getHash(elevator + direction, floors);
+
+                if (!states.includes(nextHash) && floors[elevator + direction] && isValidState(floors[elevator + direction]) && isValidState(floors[elevator])) {
+                    const floorsCopy = floors.map(floor => floor.slice());
+			        queue.push([elevator + direction, floorsCopy, moves + 1, nextHash])
+                }
+
+                move(elevator + direction, floors, -direction, 0, index1)
+		        move(elevator + direction, floors, -direction, 0, index2)
+            }
+        }
+
+        const startNums = start.map(floor => floor.map(item => item.value));
+        const endHash = getHash(3, [[], [], [], startNums.reduce((acc, curr) => acc.concat(curr), [])])
+        queue.push([0, startNums, 0, getHash(0, startNums)])
+
+        while (true) {
+            const [elevator, floors, moves, currHash] = queue.shift()!;
+
+            if (states.includes(currHash)) {
                 continue;
             }
 
-            if (other == end) {
-                return 1;
+            states.push(currHash);
+            if (currHash === endHash) {
+                return moves;
             }
 
-            const subLength = this.findMinPath(other, end, otherNodes, newFloor);
-            if (subLength < minPath) {
-                minPath = subLength;
-            }
-        }
+            for (let index1 = 0; index1 < floors[elevator].length; index1++) {
+                for (let index2 = index1 + 1; index2 < floors[elevator].length; index2++) {
+                    exploreState(3, elevator, floors, 1, moves, index1, index2);
+                    exploreState(0, elevator, floors, -1, moves, index1, index2);
+                }
 
-        return minPath;
-    }
-
-    private getValidStates(diagram: Item[][]): Node[] {
-        const allChips = diagram.reduce((prev, curr) => prev.concat(curr.filter(item => item instanceof Chip)), []);
-        const allGens = diagram.reduce((prev, curr) => prev.concat(curr.filter(item => item instanceof Generator)), []);
-        const totalItems = allChips.length + allGens.length;
-        const allPerms: Item[][] = [];
-
-        const perms = permutatons([...allChips, ...allGens], 4, true);
-        for (const perm of perms) {
-            if (!this.contains(allPerms, perm) && Node.floorValid(perm)) {
-                allPerms.push(perm);
+                exploreState(3, elevator, floors, 1, moves, index1);
+                exploreState(0, elevator, floors, -1, moves, index1);
             }
         }
 
-        for (const floor of diagram) {
-            allPerms.push([]);
-        }
-
-        const validStates: Node[] = [];
-        for (const state of permutatons(allPerms, diagram.length)) {
-            const node = new Node(state, totalItems);
-            if (node.valid) {
-                validStates.push(node);
-            }
-        }
-        return validStates;
-    }
-
-    private contains(list: Item[][], contained: Item[]): boolean {
-        return list.reduce((prev: boolean, curr) => {
-            return prev || (curr.length == contained.length && curr.every(item => contained.includes(item)));
-        }, false);
+        return Infinity;
     }
 
     private generateDiagram(): Item[][] {
