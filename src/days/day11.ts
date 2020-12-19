@@ -1,5 +1,7 @@
 import { Day } from "./day";
 
+// my solution took hours to compute (Dijkstra), so instead i rewrote https://github.com/daniel-dara/advent-of-code/blob/master/2016/day11/part2.py.
+
 const elements: string[] = [];
 
 export class Chip {
