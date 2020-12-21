@@ -43,33 +43,6 @@ export class Day14 extends Day {
         return await this.runBatch(0, stretch, []);
     }
 
-    private findHashesSync(stretch = false): number {
-        let found : Key[]= [];
-        let i = 0;
-        while (found.length < 64) {
-            let hash = Md5.hashAsciiStr(this.key + i) as string;
-            if (stretch) {
-                hash = this.stretch(hash);
-            }
-            const match = /(\w)\1{2}/.exec(hash);
-            if (match) {
-                const search = match![1];
-                for (let j = 1; j <= 1000; j++) {
-                    let subhash = Md5.hashAsciiStr(this.key + (i + j)) as string;
-                    if (stretch) {
-                        subhash = this.stretch(subhash);
-                    }
-                    if (subhash.includes(search.repeat(5))) {
-                        found.push(new Key(i, hash));
-                        console.log(i, i + j, hash, found.length);
-                    }
-                }
-            }
-            i++;
-        }
-        return found[63].index;
-    }
-
     private stretch(hash: string): string {
         for (let i = 0; i < 2016; i++) {
             hash = Md5.hashAsciiStr(hash) as string;
