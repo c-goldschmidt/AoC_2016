@@ -1,34 +1,39 @@
+import { exception } from "console";
 import { Day } from "./day";
 
-export enum InstType {
-    CPY = 'cpy',
-    INC = 'inc',
-    DEC = 'dec',
-    JNZ = 'jnz',
+export interface InstType {
+    [index: string]: string;
 }
 
-interface Registers {
+export const InstType = {
+    CPY: 'cpy',
+    INC: 'inc',
+    DEC: 'dec',
+    JNZ: 'jnz',
+}
+
+export interface Registers {
     a: number;
     b: number;
     c: number;
     d: number;
 }
 
-class Instruction {
+export class Instruction {
     public static create(interpreter: AssembunnyInterpreter, match: RegExpExecArray) {
-        return new Instruction(
+        return new this(
             interpreter,
-            match.groups!.cmd as InstType,
+            match.groups!.cmd,
             match.groups!.target1,
             match.groups!.target2,
         )
     }
 
-    private constructor(
-        private interpreter: AssembunnyInterpreter,
-        private type: InstType,
-        private target1: string, 
-        private target2: string | null,
+    protected constructor(
+        protected interpreter: AssembunnyInterpreter,
+        protected type: string,
+        protected target1: string, 
+        protected target2: string | null,
     ) { }
 
     execute() {
@@ -41,37 +46,44 @@ class Instruction {
                 return this.dec();
             case InstType.JNZ:
                 return this.jnz();
+            default:
+                throw new Error(`Unknown instruction type: ${this.type}`)
         }
     }
 
-    private copy() {
-        const parsed = parseInt(this.target1, 10);
-        if (!isNaN(parsed)) {
-            this.interpreter.registers[this.target2! as keyof Registers] = parsed;
-        } else {
-            this.interpreter.registers[this.target2! as keyof Registers] = this.interpreter.registers[this.target1 as keyof Registers];
+    protected getValue(target: string) {
+        let value = parseInt(target, 10);
+        if (isNaN(value)) {
+            value = this.interpreter.registers[target as keyof Registers];
         }
+        return value;
     }
 
-    private inc() {
+    protected copy() {
+        this.interpreter.registers[this.target2! as keyof Registers] = this.getValue(this.target1);
+    }
+
+    protected inc() {
         this.interpreter.registers[this.target1 as keyof Registers]++;
     }
     
-    private dec() {
+    protected dec() {
         this.interpreter.registers[this.target1 as keyof Registers]--;
     }
 
-    private jnz() {
-        const val = this.interpreter.registers[this.target1 as keyof Registers];
+    protected jnz() {
+        const val = this.getValue(this.target1);
         if (val !== 0) {
-            this.interpreter.pointer += parseInt(this.target2!, 10) - 1;
+            const ptr = this.getValue(this.target2!);
+            this.interpreter.pointer += ptr - 1;
         }
     }
 }
 
-class AssembunnyInterpreter {
-    private rxInstruction = /(?<cmd>\w+) (?<target1>\w+) ?(?<target2>-?\w+)?/;
-    private instructions: Instruction[] = [];
+export class AssembunnyInterpreter {
+    private rxInstruction = /(?<cmd>\w+) (?<target1>-?\w+) ?(?<target2>-?\w+)?/;
+    protected instructions: Instruction[] = [];
+    protected instructionClass = Instruction;
 
     public pointer = 0;
     public registers: Registers = {a: 0, b: 0, c: 0, d: 0}
@@ -80,8 +92,9 @@ class AssembunnyInterpreter {
 
     public execute() {
         while (this.pointer < this.instructions.length) {
+            // console.log(this.pointer);
             this.instructions[this.pointer].execute();
-            this.pointer += 1;
+            this.pointer++;
         }
     }
 
@@ -91,7 +104,7 @@ class AssembunnyInterpreter {
             throw Error('invalid instruction: ' + inst);
         }
 
-        this.instructions.push(Instruction.create(this, match));
+        this.instructions.push(this.instructionClass.create(this, match));
     }
 }
 
